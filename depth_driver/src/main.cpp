@@ -1,13 +1,23 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
+#include <sensor_msgs/image_encodings.h>
+#include <std_msgs/Header.h>
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <vector>
+#include <iterator>
 
 #include <fz_api.h>
 
+#include <ctime>
+
 #define HERTZ 10
 #define MAX_DEVICES 40
+#define HEIGHT 480
+#define WIDTH 640
+#define PBYTES 8
+
 
 
 int main(int argc, char**argv) {
@@ -32,20 +42,23 @@ int main(int argc, char**argv) {
 	//mode may be wrong. Alternative is DE_MODE_640X480_640X480; 
 	uint16_t mode = DE_MODE_640X480_30;
 	uint16_t shutterMs = 20;//2ms
-	uint16_t iFPS = 40;
+	uint16_t FPS = 40;
+	uint8_t* image = new uint8_t[WIDTH*HEIGHT*PBYTES];
+	FZ_FRAME_HEADER frameHeader;
+	size_t bufsize = sizeof(image);
 
 	//Initialize the API
-	/FZ_Init();
+	FZ_Init();
 	
 	//set up logging 
 	int iFlags = FZ_LOG_TO_STDOUT;
 	iFlags |= FZ_LOG_ERROR | FZ_LOG_WARN | FZ_LOG_INFO;
-	FZ_SetLogging(iFlags, NULL, FZLogCallback);
+	FZ_SetLogging(iFlags, NULL, NULL);
 	//TODO: SET UP LOGGING FOR PRODUCTION
 	
 	//enumerate connected devices
 	int numDevices = MAX_DEVICES;
-	result = FZ_EnumDevices2(deviceInfo, &iNumDevices);
+	result = FZ_EnumDevices2(deviceInfo, &numDevices);
 	if(result!=FZ_Success || numDevices<1){
 		printf("ERROR: Devices not found\n");
 		return 1;
@@ -72,6 +85,20 @@ int main(int argc, char**argv) {
 		printf("ERROR: Could not set shutter speed\n");
 		return 1;
 	}
+	
+	//set frame rate
+	result = FZ_IOCtl(device, CMD_DE_SET_FPS, &FPS, sizeof(FPS), NULL, NULL, NULL);
+	if(result != FZ_Success){
+		printf("ERROR: couldn't set FPS\n");
+		return 1;
+	}
+
+	//start sensor!
+	result = FZ_IOCtl(device, CMD_DE_SENSOR_START, NULL, 0, NULL, NULL, NULL);
+	if(result != FZ_Success){
+		printf("ERROR: couldn't start sensor\n");
+		return 1;
+	}
 
 	
 	//Message format that works with publishing
@@ -79,13 +106,51 @@ int main(int argc, char**argv) {
 
 	//get frames at HERTZ times per second.
 	ros::Rate loop_rate(HERTZ);
+	
+	uint32_t ct = 0;
+
+	sensor_msgs::ImagePtr frame (new sensor_msgs::Image);
+
+	std::vector<uint8_t>* image_final;
 
 	while (nh.ok()){
-		//TODO: Construct Msg from raw data
-		
-		pub.publish(msg);
+		result = FZ_GetFrame(device, &frameHeader, image, &bufsize);
+		if(result != FZ_Success){
+			printf("ERROR: Could not get frame\n");
+			return 1;
+		}
+		//set fields in frame
+		frame->header.seq = ct;
+		frame->header.stamp = ros::Time::now();
+		frame->height = HEIGHT;
+		frame->width = WIDTH;
+		frame->encoding = sensor_msgs::image_encodings::RGBA16;
+		frame->is_bigendian = 0;
+		frame->step = PBYTES * WIDTH;
+		//convert image array into a vector
+		image_final = new std::vector<uint8_t>();
+		image_final->insert(image_final->begin(), image, image + HEIGHT*WIDTH*PBYTES);
+
+		frame->data = *image_final;
+		pub.publish(frame);
+		ct++;
 
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
+
+	//stop sensor
+	result = FZ_IOCtl(device, CMD_DE_SENSOR_STOP, NULL, 0, NULL, NULL, NULL);
+	if(result != FZ_Success){
+		printf("ERROR: Could not stop sensor\n");
+		return 1;
+	}
+	
+	//disconnect
+	FZ_Close(device);
+
+	FZ_Exit();
+
+	return 0;
+
 }
