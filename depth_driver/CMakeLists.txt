@@ -8,15 +8,18 @@ find_package(catkin REQUIRED COMPONENTS roscpp image_transport std_msgs)
 
 add_executable(ENode src/main.cpp)
 
-target_link_libraries (ENode ${catkin_LIBRARIES})
-
 include_directories(inc)
 link_directories(lib)
+
+target_link_libraries (ENode ${catkin_LIBRARIES} libfz_api)
+
+
 
 catkin_package(
 	INCLUDE_DIRS inc
 	LIBRARIES ${PROJECT_NAME}
-	CATKIN_DEPENDS roscpp image_transport std_msgs)
+	CATKIN_DEPENDS roscpp image_transport std_msgs
+	DEPENDS libfz_api)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
