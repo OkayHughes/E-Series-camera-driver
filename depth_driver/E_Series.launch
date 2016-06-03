@@ -1,0 +1,4 @@
+<launch>
+<node pkg="depth_driver" name="E_Series_Publisher" type="ENode" 
+output="screen" respawn="true" respawn_delay="10"/>
+</launch>

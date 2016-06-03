@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(depth_driver)
+catkin_package(
+	INCLUDE_DIRS inc
+	LIBRARIES ${PROJECT_NAME}
+	CATKIN_DEPENDS roscpp image_transport std_msgs
+	DEPENDS fz_api)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -17,11 +22,6 @@ target_link_libraries (ENode ${catkin_LIBRARIES} fz_api)
 
 
 
-catkin_package(
-	INCLUDE_DIRS inc
-	LIBRARIES ${PROJECT_NAME}
-	CATKIN_DEPENDS roscpp image_transport std_msgs
-	DEPENDS fz_api)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 

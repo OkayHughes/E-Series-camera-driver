@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include<ros/console.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/Header.h>
@@ -60,14 +61,14 @@ int main(int argc, char**argv) {
 	int numDevices = MAX_DEVICES;
 	result = FZ_EnumDevices2(deviceInfo, &numDevices);
 	if(result!=FZ_Success || numDevices<1){
-		printf("ERROR: Devices not found\n");
+		ROS_INFO("ERROR: Devices not found\n");
 		return 1;
 	}
 
 	//open first device
 	result = FZ_Open(deviceInfo[0].szPath, 0,  &device);
 	if(result != FZ_Success){
-		printf("ERROR: Could not open device\n");
+		ROS_INFO("ERROR: Could not open device\n");
 		return 1;
 	}
 	
@@ -75,28 +76,28 @@ int main(int argc, char**argv) {
 	//Returns wheter acknowledged or not;
 	result = FZ_IOCtl(device, CMD_DE_SET_MODE, &mode, sizeof(mode), NULL, NULL, NULL);
 	if(result !=FZ_Success){
-		printf("ERROR: Could not set camera mode\n");
+		ROS_INFO("ERROR: Could not set camera mode\n");
 		return 1;
 	}
 
 	//set shutter
 	result = FZ_IOCtl(device, CMD_DE_SET_SHUTTER, &shutterMs, sizeof(shutterMs), NULL, NULL, NULL);
 	if(result != FZ_Success){
-		printf("ERROR: Could not set shutter speed\n");
+		ROS_INFO("ERROR: Could not set shutter speed\n");
 		return 1;
 	}
 	
 	//set frame rate
 	result = FZ_IOCtl(device, CMD_DE_SET_FPS, &FPS, sizeof(FPS), NULL, NULL, NULL);
 	if(result != FZ_Success){
-		printf("ERROR: couldn't set FPS\n");
+		ROS_INFO("ERROR: couldn't set FPS\n");
 		return 1;
 	}
 
 	//start sensor!
 	result = FZ_IOCtl(device, CMD_DE_SENSOR_START, NULL, 0, NULL, NULL, NULL);
 	if(result != FZ_Success){
-		printf("ERROR: couldn't start sensor\n");
+		ROS_INFO("ERROR: couldn't start sensor\n");
 		return 1;
 	}
 
@@ -116,7 +117,7 @@ int main(int argc, char**argv) {
 	while (nh.ok()){
 		result = FZ_GetFrame(device, &frameHeader, image, &bufsize);
 		if(result != FZ_Success){
-			printf("ERROR: Could not get frame\n");
+			ROS_INFO("ERROR: Could not get frame\n");
 			return 1;
 		}
 		//set fields in frame
@@ -142,7 +143,7 @@ int main(int argc, char**argv) {
 	//stop sensor
 	result = FZ_IOCtl(device, CMD_DE_SENSOR_STOP, NULL, 0, NULL, NULL, NULL);
 	if(result != FZ_Success){
-		printf("ERROR: Could not stop sensor\n");
+		ROS_INFO("ERROR: Could not stop sensor\n");
 		return 1;
 	}
 	
