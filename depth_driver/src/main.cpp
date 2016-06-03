@@ -15,9 +15,11 @@
 
 #define HERTZ 10
 #define MAX_DEVICES 40
-#define HEIGHT 480
-#define WIDTH 640
-#define PBYTES 8
+#define HEIGHT 160
+#define WIDTH 120
+#define PBYTES 64
+#define PBYTESPER 16
+#define ROWBYTES (HEIGHT*WIDTH*PBYTESPER)
 
 
 
@@ -112,6 +114,7 @@ int main(int argc, char**argv) {
 
 	sensor_msgs::ImagePtr frame (new sensor_msgs::Image);
 
+	uint8_t* fin;
 	std::vector<uint8_t>* image_final;
 
 	while (nh.ok()){
@@ -120,6 +123,9 @@ int main(int argc, char**argv) {
 			ROS_INFO("ERROR: Could not get frame\n");
 			return 1;
 		}
+
+
+
 		//set fields in frame
 		frame->header.seq = ct;
 		frame->header.stamp = ros::Time::now();
@@ -130,7 +136,16 @@ int main(int argc, char**argv) {
 		frame->step = PBYTES * WIDTH;
 		//convert image array into a vector
 		image_final = new std::vector<uint8_t>();
-		image_final->insert(image_final->begin(), image, image + HEIGHT*WIDTH*PBYTES);
+
+		fin = (uint8_t*) &image;
+	
+
+		for(int i = 0; i < HEIGHT*WIDTH*PBYTESPER; i+= 2){
+			for(int j = 0; j < 4; j++){
+					image_final->push_back(fin[j * HEIGHT*WIDTH*PBYTESPER + i]);
+					image_final->push_back(fin[j * HEIGHT*WIDTH*PBYTESPER + i + 1]);	
+			}
+		}
 
 		frame->data = *image_final;
 		pub.publish(frame);
