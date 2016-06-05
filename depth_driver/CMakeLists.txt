@@ -10,15 +10,19 @@ catkin_package(
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 
-find_package(catkin REQUIRED COMPONENTS roscpp image_transport std_msgs)
-include_directories(inc)
-link_directories(lib)
+find_package(PCL 1.3 REQUIRED COMPONENTS common io)
+find_package(catkin REQUIRED COMPONENTS roscpp image_transport std_msgs pcl_ros)
+include_directories(inc ${PCL_INCLUDE_DIRS})
+
+link_directories(lib ${PCL_LIBRARY_DIRS})
+
+add_definitions(${PCL_DEFINITIONS})
 
 add_executable(ENode src/main.cpp)
 
 
 
-target_link_libraries (ENode ${catkin_LIBRARIES} fz_api)
+target_link_libraries (ENode ${catkin_LIBRARIES} fz_api ${PCL_COMMON_LIBRARIES} ${PCL_IO_LIBRARIES} )
 
 
 

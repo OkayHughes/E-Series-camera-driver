@@ -1,8 +1,6 @@
 #include <ros/ros.h>
-#include<ros/console.h>
-#include <image_transport/image_transport.h>
-#include <sensor_msgs/image_encodings.h>
-#include <std_msgs/Header.h>
+#include <ros/console.h>
+#include <pcl_ros/point_cloud.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,8 +15,8 @@
 #define MAX_DEVICES 40
 #define HEIGHT 160
 #define WIDTH 120
-#define PBYTES 64
-#define PBYTESPER 16
+#define PFIELDS 4
+#define PBYTESPER 2
 #define ROWBYTES (HEIGHT*WIDTH*PBYTESPER)
 
 
@@ -30,8 +28,7 @@ int main(int argc, char**argv) {
 	//get handler for ros node
 	ros::NodeHandle nh;
 	//Establish it as image transport node and start publishing.
-	image_transport::ImageTransport it(nh);
-	image_transport::Publisher pub = it.advertise("camera/image", 1);
+	ros::Publisher pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI> >("/pointcloud/ESeries", 1);
 	
 	//Variables for initializing FZ api
 	//Gets device info from EnumDevices2
@@ -46,7 +43,7 @@ int main(int argc, char**argv) {
 	uint16_t mode = DE_MODE_640X480_30;
 	uint16_t shutterMs = 20;//2ms
 	uint16_t FPS = 40;
-	uint8_t* image = new uint8_t[WIDTH*HEIGHT*PBYTES];
+	uint16_t* image = new uint16_t[WIDTH*HEIGHT*PFIELDS];
 	FZ_FRAME_HEADER frameHeader;
 	size_t bufsize = sizeof(image);
 
@@ -104,18 +101,13 @@ int main(int argc, char**argv) {
 	}
 
 	
-	//Message format that works with publishing
-	sensor_msgs::ImagePtr msg;
 
 	//get frames at HERTZ times per second.
 	ros::Rate loop_rate(HERTZ);
 	
-	uint32_t ct = 0;
-
-	sensor_msgs::ImagePtr frame (new sensor_msgs::Image);
-
-	uint8_t* fin;
-	std::vector<uint8_t>* image_final;
+	
+	pcl::PointCloud<pcl::PointXYZI> cloud;
+	
 
 	while (nh.ok()){
 		result = FZ_GetFrame(device, &frameHeader, image, &bufsize);
@@ -124,32 +116,25 @@ int main(int argc, char**argv) {
 			return 1;
 		}
 
-
-
-		//set fields in frame
-		frame->header.seq = ct;
-		frame->header.stamp = ros::Time::now();
-		frame->height = HEIGHT;
-		frame->width = WIDTH;
-		frame->encoding = sensor_msgs::image_encodings::RGBA16;
-		frame->is_bigendian = 0;
-		frame->step = PBYTES * WIDTH;
-		//convert image array into a vector
-		image_final = new std::vector<uint8_t>();
-
-		fin = (uint8_t*) &image;
-	
-
-		for(int i = 0; i < HEIGHT*WIDTH*PBYTESPER; i+= 2){
-			for(int j = 0; j < 4; j++){
-					image_final->push_back(fin[j * HEIGHT*WIDTH*PBYTESPER + i]);
-					image_final->push_back(fin[j * HEIGHT*WIDTH*PBYTESPER + i + 1]);	
-			}
+		//Convert image to point cloud
+		cloud = pcl::PointCloud<pcl::PointXYZI>();
+		cloud.width = WIDTH;
+		cloud.height = HEIGHT;
+		
+		cloud.points.resize(WIDTH * HEIGHT);
+		
+		
+		//Image lists fields by row. Don't ask me why.
+		for(int i = 0; i < HEIGHT*WIDTH; i++){
+			cloud.points[i].x = (float) image[i];
+			cloud.points[i].y = (float) image[i + HEIGHT * WIDTH ];
+			cloud.points[i].z = (float) image[i + HEIGHT * WIDTH  * 2] ;
+			cloud.points[i].intensity = (float) image[i + HEIGHT * WIDTH * 3] ;
 		}
+		
 
-		frame->data = *image_final;
-		pub.publish(frame);
-		ct++;
+		
+		pub.publish(cloud);
 
 		ros::spinOnce();
 		loop_rate.sleep();
