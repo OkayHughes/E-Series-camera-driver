@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
-#include <iterator>
 
 #include <fz_api.h>
+#include <iterator>
 
 #include <ctime>
 
@@ -126,10 +126,10 @@ int main(int argc, char**argv) {
 		
 		//Image lists fields by row. Don't ask me why.
 		for(int i = 0; i < HEIGHT*WIDTH; i++){
-			cloud.points[i].x = (float) image[i];
-			cloud.points[i].y = (float) image[i + HEIGHT * WIDTH ];
-			cloud.points[i].z = (float) image[i + HEIGHT * WIDTH  * 2] ;
-			cloud.points[i].intensity = (float) image[i + HEIGHT * WIDTH * 3] ;
+			cloud.points[i].intensity = (float) image[i];
+			cloud.points[i].z = (float) image[i + HEIGHT * WIDTH ];
+			cloud.points[i].x = (float) image[i + HEIGHT * WIDTH  * 2] ;
+			cloud.points[i].y = (float) image[i + HEIGHT * WIDTH * 3] ;
 		}
 		
 
